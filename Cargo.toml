@@ -1,0 +1,3 @@
+[workspace]
+resolver = "2"
+members = ["rbac", "rbac-example", "rbac-macro", "rbac-visualize"]

@@ -1,0 +1,13 @@
+[package]
+name = "rbac-macro"
+version = "0.1.0"
+edition = "2021"
+authors = ["funcpp"]
+
+[dependencies]
+quote = "1.0.37"
+syn = "2.0.79"
+rbac = { path = "../rbac" }
+
+[lib]
+proc-macro = true
