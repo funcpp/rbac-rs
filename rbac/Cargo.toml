@@ -3,6 +3,9 @@ name = "rbac"
 version = "0.1.0"
 edition = "2021"
 authors = ["funcpp"]
+keywords = ["rbac"]
+license = "MIT"
+include = ["src/*.rs", "Cargo.toml"]
 
 [dependencies]
 indradb-lib = {version = "4.0.0", features=["rocksdb-datastore"]}
