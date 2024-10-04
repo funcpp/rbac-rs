@@ -38,6 +38,14 @@ mod tests {
             title: "Hello, World!",
         };
 
+        const GROUP_FOO: Group = Group { id: 1, name: "Foo" };
+
+        const POST_BY_FOO: Post = Post {
+            id: 3,
+            author_id: GROUP_FOO.id,
+            title: "Hello, World!",
+        };
+
         #[test]
         fn community_basic() {
             let server = rbac::RBAC::new("./rocksdb/test1");
@@ -60,7 +68,7 @@ mod tests {
             let r = EntityRelationship::new(&UESR_ALICE, &PostRoles::Writer, &POST_BY_ALICE);
             server.add_relationship(&r).unwrap();
 
-            // automatically role inherits
+            // role inherits automatically
             let test = EntityRelationship::new(&UESR_ALICE, &PostRoles::Viewer, &POST_BY_ALICE);
             let result = server.allowed(&test);
             // alice is a writer and it means also a viewer.
@@ -83,6 +91,23 @@ mod tests {
             assert_eq!(result.is_ok(), true);
             // but can't view alice's post
             assert_eq!(result.unwrap(), false);
+
+            // charlie and bob joins the group foo
+            let r = EntityRelationship::new(&USER_BOB, &GroupRoles::Member, &GROUP_FOO);
+            server.add_relationship(&r).unwrap();
+
+            let r = EntityRelationship::new(&USER_CHARLIE, &GroupRoles::Member, &GROUP_FOO);
+            server.add_relationship(&r).unwrap();
+
+            // group foo writes a post
+            let r = EntityRelationship::new(&GROUP_FOO, &PostRoles::Writer, &POST_BY_FOO);
+            server.add_relationship(&r).unwrap();
+
+            // charlie can view the post by foo
+            let test = EntityRelationship::new(&USER_CHARLIE, &PostRoles::Viewer, &POST_BY_FOO);
+            let result = server.allowed(&test);
+
+            assert_eq!(result.unwrap(), true);
         }
     }
 }
