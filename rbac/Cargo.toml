@@ -1,6 +1,8 @@
 [package]
 name = "rbac"
 version = "0.1.0"
+description = "rbca core lib"
+repository = "https://github.com/funcpp/rbac-rs"
 edition = "2021"
 authors = ["funcpp"]
 keywords = ["rbac"]
