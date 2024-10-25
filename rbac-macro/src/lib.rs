@@ -2,9 +2,9 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Attribute, Data, DeriveInput, Fields, Path};
+use syn::{parse_macro_input, Attribute, Data, DeriveInput, Path};
 
-#[proc_macro_derive(Namespace, attributes(roles))]
+#[proc_macro_derive(Namespace, attributes(namespace_role))]
 pub fn derive_define_namespace(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
@@ -15,200 +15,173 @@ pub fn derive_define_namespace(input: TokenStream) -> TokenStream {
         panic!("Namespace can only be derived for enums");
     };
 
-    let mut to_string_match_arms = vec![];
-    //let mut from_string_match_arms = vec![];
-    let mut variant_roles = vec![];
-    let mut get_roles_match_arms = vec![];
-
-    for variant in variants {
-        let variant_name = &variant.ident;
-        let attrs = &variant.attrs;
-
-        let roles_path = attrs
-            .iter()
-            .find(|attr| attr.path().is_ident("roles"))
-            .and_then(|attr| parse_attribute(attr));
-
-        if roles_path.is_some() {
-            let roles = roles_path.unwrap();
-            variant_roles.push((variant_name.clone(), roles.clone()));
-
-            /*
-            impl Namespaces {
-                pub fn get_roles(&self) -> Option<Box<dyn RoleHierarchy>> {
-                    match self {
-                        Namespaces::User(_) => None,
-                        Namespaces::Post(_) => Some(Box::new(PostRoles::default())),
-                        Namespaces::Group(_) => Some(Box::new(GroupRoles::default())),
-                    }
-                }
-            }
-            */
-
-            let get_roles_match_arm = quote! {
-                #name::#variant_name(_) => Some(Box::new(#roles::default())),
-            };
-
-            get_roles_match_arms.push(get_roles_match_arm);
-        } else {
-            get_roles_match_arms.push(quote! {
-                #name::#variant_name(_) => None,
-            });
-        }
-
-        // impl ToString snippet
-        let variant_match = match &variant.fields {
-            Fields::Unnamed(fields) if fields.unnamed.len() == 1 => {
-                quote! {
-                    #name::#variant_name(Some(id)) => format!("{}_{}", stringify!(#variant_name), id),
-                    #name::#variant_name(None) => stringify!(#variant_name).to_string(),
-                }
-            }
-            _ => panic!("Namespace requires enum variants with exactly one unnamed field"),
-        };
-
-        to_string_match_arms.push(variant_match);
-
-        // impl FromStr snippet
-        // let variant_from_str = match &variant.fields {
-        //     Fields::Unnamed(fields) if fields.unnamed.len() == 1 => {
-        //         quote! {
-        //             s if s.starts_with(stringify!(#variant_name)) => {
-        //                 let id = s.split('_').nth(1).unwrap().parse().unwrap();
-        //                 Ok(#name::#variant_name(Some(id)))
-        //             }
-        //             s if s == stringify!(#variant_name) => Ok(#name::#variant_name(None)),
-        //         }
-        //     }
-        //     _ => panic!("Namespace requires enum variants with exactly one unnamed field"),
-        // };
-
-        // from_string_match_arms.push(variant_from_str);
+    /*
+    pub enum Namespace {
+        #[namespace_role(UserToPost::Writer, UserToPost::Viewer)]
+        #[namespace_role(UserToGroup::Admin, UserToGroup::Member)]
+        User,
+        Post,
+        #[namespace_role(GroupToPost::Writer, GroupToPost::Viewer)]
+        Group,
     }
 
-    // Generate the ToString implementation
-    let to_string_impl = quote! {
-        impl NamespaceToString for #name {
+    impl ACNamespace for Namespace {
+        fn get_id(&self) -> i32 {
+            match self {
+                Namespace::User => 1,
+                Namespace::Club => 2,
+                Namespace::ClubTeam => 3,
+            }
+        }
+
+        fn to_string(&self) -> String {
+            match self {
+                Namespace::User => "User".to_string(),
+                Namespace::Club => "Club".to_string(),
+                Namespace::ClubTeam => "ClubTeam".to_string(),
+            }
+        }
+
+        fn get_roles(&self) -> Vec<Box<dyn ACRole>> {
+            match self {
+                Namespace::User => vec![
+                    Box::new(UserToPost::Writer),
+                    Box::new(UserToPost::Viewer),
+                    Box::new(UserToGroup::Admin),
+                    Box::new(UserToGroup::Member),
+                ],
+                Namespace::Post => vec![],
+                Namespace::Group => vec![],
+            }
+        }
+    }
+    */
+
+    let get_id_arms = variants.iter().enumerate().map(|(i, variant)| {
+        let variant_name = &variant.ident;
+        quote! {
+            #name::#variant_name => #i as i32,
+        }
+    });
+
+    let to_string_arms = variants.iter().map(|variant| {
+        let variant_name = &variant.ident;
+        let variant_str = variant_name.to_string();
+        quote! {
+            #name::#variant_name => #variant_str.to_string(),
+        }
+    });
+
+    let get_roles_arms = variants.iter().map(|variant| {
+        let variant_name = &variant.ident;
+        let role_attrs = find_all_attrs(&variant.attrs, "namespace_role");
+        let role_attrs = role_attrs.iter().map(|role| {
+            quote! {
+                Box::new(#role),
+            }
+        });
+
+        quote! {
+            #name::#variant_name => vec![#(#role_attrs)*],
+        }
+    });
+
+    let gen = quote! {
+        impl ACNamespace for #name {
+            fn get_id(&self) -> i32 {
+                match self {
+                    #(#get_id_arms)*
+                }
+            }
+
             fn to_string(&self) -> String {
                 match self {
-                    #(#to_string_match_arms)*
+                    #(#to_string_arms)*
                 }
             }
-        }
-    };
 
-    let get_roles_method = quote! {
-        impl NamespaceRole for #name {
-            fn get_roles(&self) -> Option<Box<dyn RoleHierarchy>> {
+            fn get_roles(&self) -> Vec<Box<dyn ACRole>> {
                 match self {
-                    #(#get_roles_match_arms)*
+                    #(#get_roles_arms)*
                 }
             }
         }
     };
 
-    // let from_string_impl = quote! {
-    //     impl FromStr for #name {
-    //         type Err = ();
-
-    //         fn from_str(s: &str) -> Result<Self, ()> {
-    //             match s {
-    //                 #(#from_string_match_arms)*
-    //                 _ => Err(()),
-    //             }
-    //         }
-    //     }
-    // };
-
-    // let role_to_node_arms = variant_roles.iter().map(|(variant_name, associated_enum)| {
-    //     let associated_enum_name = associated_enum.get_ident().unwrap();
-
-    //     // get variants of enum
-
-    //     let variant_roles =
-
-    //     quote! {
-    //         #associated_enum_name::#variant_name => Node::new(#name::#variant_name(group_id.clone()).to_string(), self.to_string()),
-    //     }
-    // });
-
-    // let to_node_impl_for_roles = quote! {
-    //     impl ToNode for #name {
-    //         fn to_node(&self, group_id: Option<String>) -> Node {
-    //             match self {
-    //                 #(#role_to_node_arms)*
-    //             }
-    //         }
-    //     }
-    // };
-
-    // Generate the get_roles method
-    // let get_roles_match_arms = variant_roles.iter().map(|(variant_name, associated_enum)| {
-    //     quote! {
-    //         #name::#variant_name(_) => AllRoles::#associated_enum(#associated_enum::default()),
-    //     }
-    // });
-
-    // let get_roles_method = quote! {
-    //     impl #name {
-    //         pub fn get_roles(&self) -> AllRoles {
-    //             match self {
-    //                 #(#get_roles_match_arms)*
-    //             }
-    //         }
-    //     }
-    // };
-
-    let gen = quote! {
-        #to_string_impl
-        //#from_string_impl
-        #get_roles_method
-
-        impl NamespaceToStringAndRole for #name {}
-    };
-
     gen.into()
 }
 
-#[proc_macro_derive(ToNode, attributes(namespace))]
-pub fn derive_to_node(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    let struct_name = input.ident;
-    let namespace_path = input
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("namespace"))
-        .and_then(|attr| parse_attribute(attr))
-        .expect("Expected #[namespace] attribute with a path");
-
-    let gen = quote! {
-        impl rbac::ToNode for #struct_name {
-            fn to_node(&self, parent_id: Option<String>) -> Node {
-                Node::new(Box::new(#namespace_path(parent_id)), self.id.to_string())
-            }
-        }
-    };
-
-    gen.into()
-}
-
-#[proc_macro_derive(Role, attributes(namespace, child_of))]
+#[proc_macro_derive(Role, attributes(role_subject, role_object, subrole_of))]
 pub fn derive_role(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
 
-    let namespace_path = input
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("namespace"))
-        .and_then(parse_attribute)
-        .expect("Expected #[namespace] attribute with a valid path");
+    /*
+    impl ACRole for UserToClub {
+        fn get_object_namespace_id() -> i32 {
+            Namespace::User.get_id()
+        }
+        fn get_subject_namespace_id() -> i32 {
+            Namespace::Club.get_id()
+        }
+
+        fn get_super_roles(&self) -> Vec<Box<dyn ACRole>> {
+            match self {
+                UserToClub::Master => vec![],
+                UserToClub::SemiMaster => vec![Box::new(UserToClub::Master), Box::new(UserToClub::SuperMaster)],
+                UserToClub::Member => vec![Box::new(UserToClub::SemiMaster)],
+            }
+        }
+
+        fn as_i32(&self) -> i32 {
+            match self {
+                UserToClub::Master => 0,
+                UserToClub::SemiMaster => 1,
+                UserToClub::Member => 2,
+            }
+        }
+
+        fn to_string(&self) -> String {
+            match self {
+                UserToClub::Master => "Master".to_string(),
+                UserToClub::SemiMaster => "SemiMaster".to_string(),
+                UserToClub::Member => "Member".to_string(),
+            }
+        }
+    }
+    */
+
+    let subject_namespace_path = find_single_attr(&input.attrs, "role_subject")
+        .expect("Expected #[role_subject] attribute with a valid path");
+
+    let object_namespace_path = find_single_attr(&input.attrs, "role_object")
+        .expect("Expected #[role_object] attribute with a valid path");
 
     if let Data::Enum(data_enum) = input.data {
         if data_enum.variants.len() == 0 {
             return TokenStream::new();
         }
+
+        let get_subset_ofs_arms = data_enum.variants.iter().map(|variant| {
+            let variant_name = &variant.ident;
+            let subset_ofs = find_all_attrs(&variant.attrs, "subrole_of");
+
+            if subset_ofs.len() == 0 {
+                return quote! {
+                    #name::#variant_name => vec![],
+                };
+            }
+
+            let subset_ofs = subset_ofs.iter().map(|subset_of| {
+                quote! {
+                    Box::new(#name::#subset_of),
+                }
+            });
+
+            quote! {
+                #name::#variant_name => vec![#(#subset_ofs)*],
+            }
+        });
 
         let to_string_arms = data_enum.variants.iter().map(|variant| {
             let variant_name = &variant.ident;
@@ -218,84 +191,46 @@ pub fn derive_role(input: TokenStream) -> TokenStream {
             }
         });
 
-        let to_node_arms = data_enum.variants.iter().map(|variant| {
+        let as_i32_arms = data_enum.variants.iter().enumerate().map(|(i, variant)| {
             let variant_name = &variant.ident;
             quote! {
-                #name::#variant_name => Node::new(Box::new(#namespace_path(group_id.clone())), self.to_string()),
-            }
-        });
-
-        /*
-        #[derive(Role)]
-        #[namespace(Namespaces::Group)]
-        pub enum GroupRoles {
-            Admin,
-            #[child_of(Admin)]
-            Member,
-        }
-        impl GroupRoles {
-            pub fn iter_hierarchy(mut f: impl FnMut(Self, Self)) {
-                f(GroupRoles::Admin, GroupRoles::Member);
-            }
-        }
-        */
-
-        let child_of_arms = data_enum.variants.iter().map(|variant| {
-            let variant_name = &variant.ident;
-            let child_of = variant
-                .attrs
-                .iter()
-                .find(|attr| attr.path().is_ident("child_of"));
-
-            if child_of.is_none() {
-                return quote! {};
-            }
-
-            let child_of = child_of.unwrap();
-
-            let parent = parse_attribute(child_of)
-                .expect("Expected #[child_of] attribute with a valid path");
-
-            quote! {
-                f(Box::new(#name::#parent), Box::new(#name::#variant_name));
-            }
-        });
-
-        let iter_al_arms = data_enum.variants.iter().map(|variant| {
-            let variant_name = &variant.ident;
-
-            quote! {
-                f(Box::new(#name::#variant_name));
+                #name::#variant_name => #i as i32,
             }
         });
 
         let expanded = quote! {
-            impl #name {
-                pub fn to_string(&self) -> String {
+            impl ACRole for #name {
+                fn to_string(&self) -> String {
                     match self {
                         #(#to_string_arms)*
                     }
                 }
-            }
 
-            impl RoleHierarchy for #name {
-                fn iter_hierarchy(&self, f: &mut dyn FnMut(Box<dyn RoleHierarchy>, Box<dyn RoleHierarchy>)) {
-                    #(#child_of_arms)*
+                fn get_subject_namespace_id(&self) -> i32 {
+                    #subject_namespace_path.get_id()
                 }
 
-                fn iter_all(&self, f: &mut dyn FnMut(Box<dyn RoleHierarchy>)) {
-                    #(#iter_al_arms)*
+                fn get_object_namespace_id(&self) -> i32 {
+                    #object_namespace_path.get_id()
                 }
 
-                // fn as_any(&self) -> &dyn Any {
-                //     self
-                // }
-            }
+                fn get_subject_namespace(&self) -> Box::<dyn ACNamespace> {
+                    Box::new(#subject_namespace_path)
+                }
 
-            impl ToNode for #name {
-                fn to_node(&self, group_id: Option<String>) -> Node {
+                fn get_object_namespace(&self) -> Box::<dyn ACNamespace> {
+                    Box::new(#object_namespace_path)
+                }
+
+                fn get_super_roles(&self) -> Vec<Box<dyn ACRole>> {
                     match self {
-                        #(#to_node_arms)*
+                        #(#get_subset_ofs_arms)*
+                    }
+                }
+
+                fn as_i32(&self) -> i32 {
+                    match self {
+                        #(#as_i32_arms)*
                     }
                 }
             }
@@ -307,7 +242,21 @@ pub fn derive_role(input: TokenStream) -> TokenStream {
     }
 }
 
-// `#[namespace(AnotherNamespaces::User)]` 형태의 경로를 파싱
+fn find_single_attr(attrs: &Vec<Attribute>, ident: &str) -> Option<Path> {
+    attrs
+        .iter()
+        .find(|attr| attr.path().is_ident(ident))
+        .and_then(parse_attribute)
+}
+
+fn find_all_attrs(attrs: &Vec<Attribute>, ident: &str) -> Vec<Path> {
+    attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident(ident))
+        .filter_map(parse_attribute)
+        .collect()
+}
+
 fn parse_attribute(attr: &Attribute) -> Option<Path> {
     attr.parse_args::<Path>().ok()
 }

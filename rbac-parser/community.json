@@ -1,0 +1,57 @@
+[
+    {
+        "name": "User",
+        "objects": [
+            {
+                "name": "Club",
+                "roles": [
+                    {
+                        "name": "Master",
+                        "subroles": [
+                            "SemiMaster"
+                        ]
+                    },
+                    {
+                        "name": "SemiMaster",
+                        "subroles": [
+                            "Member"
+                        ]
+                    },
+                    {
+                        "name": "Member"
+                    }
+                ]
+            },
+            {
+                "name": "ClubTeam",
+                "roles": [
+                    {
+                        "name": "Leader",
+                        "subroles": [
+                            "Member"
+                        ]
+                    },
+                    {
+                        "name": "Member"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "Club",
+        "objects":[
+            {
+                "name": "ClubTeam",
+                "roles": [
+                    {
+                        "name": "Owner"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "ClubTeam"
+    }
+]

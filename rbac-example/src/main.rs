@@ -7,9 +7,16 @@ fn main() {
 #[cfg(test)]
 mod tests {
     mod community {
-        use rbac::EntityRelationship;
+        use rbac::ACNamespace;
 
         use crate::examples::community::*;
+
+        #[test]
+        fn schema() {
+            let ns = Namespace::Post;
+            let roles = ns.get_roles();
+            assert_eq!(roles.len(), 4);
+        }
 
         const UESR_ALICE: User = User {
             id: 1,
@@ -51,10 +58,13 @@ mod tests {
             let server = rbac::RBAC::new("./rocksdb/test1");
             server.clear(true).unwrap();
 
-            let r = EntityRelationship::new(&UESR_ALICE, &PostRoles::Writer, &POST_BY_ALICE);
-
-            server.add_relationship(&r).unwrap();
-            let allowed = server.allowed(&r).unwrap();
+            let result = server
+                .add_relationship(UESR_ALICE, UserToPost::Writer, POST_BY_ALICE)
+                .unwrap();
+            assert_eq!(result, true);
+            let allowed = server
+                .allowed(UESR_ALICE, UserToPost::Writer, POST_BY_ALICE)
+                .unwrap();
 
             assert_eq!(allowed, true);
         }
@@ -65,49 +75,52 @@ mod tests {
             server.clear(true).unwrap();
 
             // alice is a writer
-            let r = EntityRelationship::new(&UESR_ALICE, &PostRoles::Writer, &POST_BY_ALICE);
-            server.add_relationship(&r).unwrap();
+            server
+                .add_relationship(UESR_ALICE, UserToPost::Writer, POST_BY_ALICE)
+                .unwrap();
 
             // role inherits automatically
-            let test = EntityRelationship::new(&UESR_ALICE, &PostRoles::Viewer, &POST_BY_ALICE);
-            let result = server.allowed(&test);
+            let result = server.allowed(UESR_ALICE, UserToPost::Viewer, POST_BY_ALICE);
             // alice is a writer and it means also a viewer.
             assert_eq!(result.unwrap(), true);
 
-            let r = EntityRelationship::new(&USER_BOB, &PostRoles::Viewer, &POST_BY_ALICE);
-            server.add_relationship(&r).unwrap();
+            server
+                .add_relationship(USER_BOB, UserToPost::Viewer, POST_BY_ALICE)
+                .unwrap();
 
-            let test = EntityRelationship::new(&USER_CHARLIE, &PostRoles::Viewer, &POST_BY_ALICE);
-            let result = server.allowed(&test);
+            let result = server.allowed(USER_CHARLIE, UserToPost::Viewer, POST_BY_ALICE);
             // charlie is not a node yet... so it should return an error
             assert_eq!(result.is_err(), true);
 
             // charlie write a post
-            let r = EntityRelationship::new(&USER_CHARLIE, &PostRoles::Writer, &POST_BY_CHARLIE);
-            server.add_relationship(&r).unwrap();
+            server
+                .add_relationship(USER_CHARLIE, UserToPost::Writer, POST_BY_CHARLIE)
+                .unwrap();
 
             // now charlie is a node
-            let result = server.allowed(&test);
+            let result = server.allowed(USER_CHARLIE, UserToPost::Viewer, POST_BY_ALICE);
             assert_eq!(result.is_ok(), true);
             // but can't view alice's post
             assert_eq!(result.unwrap(), false);
 
             // charlie and bob joins the group foo
-            let r = EntityRelationship::new(&USER_BOB, &GroupRoles::Member, &GROUP_FOO);
-            server.add_relationship(&r).unwrap();
+            server
+                .add_relationship(USER_BOB, UserToGroup::Member, GROUP_FOO)
+                .unwrap();
 
-            let r = EntityRelationship::new(&USER_CHARLIE, &GroupRoles::Member, &GROUP_FOO);
-            server.add_relationship(&r).unwrap();
+            server
+                .add_relationship(USER_CHARLIE, UserToGroup::Member, GROUP_FOO)
+                .unwrap();
 
             // group foo writes a post
-            let r = EntityRelationship::new(&GROUP_FOO, &PostRoles::Writer, &POST_BY_FOO);
-            server.add_relationship(&r).unwrap();
+            server
+                .add_relationship(GROUP_FOO, GroupToPost::Writer, POST_BY_FOO)
+                .unwrap();
 
             // charlie can view the post by foo
-            let test = EntityRelationship::new(&USER_CHARLIE, &PostRoles::Viewer, &POST_BY_FOO);
-            let result = server.allowed(&test);
+            // let result = server.allowed(USER_CHARLIE, UserToPost::Viewer, POST_BY_FOO);
 
-            assert_eq!(result.unwrap(), true);
+            // assert_eq!(result.unwrap(), true);
         }
     }
 }

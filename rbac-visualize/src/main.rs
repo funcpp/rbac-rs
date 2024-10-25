@@ -76,13 +76,14 @@ fn generate_graph() -> StableGraph<node::NodeData, ()> {
     let nodes = rbac.get_all_vertices().unwrap();
     let edges = rbac.get_all_edges().unwrap();
 
+    println!("{} nodes", nodes.len());
+    println!("{} edges", edges.len());
+
     let mut node_index_map = HashMap::new();
 
     for node in nodes {
-        let idx = g.add_node(node::NodeData {
-            entity: node.t.to_string(),
-        });
-        node_index_map.insert(node.id, idx);
+        let idx = g.add_node(node::NodeData { entity: node.tag });
+        node_index_map.insert(node.vertex.id, idx);
     }
 
     for edge in edges {

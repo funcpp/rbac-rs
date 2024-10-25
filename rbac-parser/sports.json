@@ -1,0 +1,57 @@
+[
+    {
+        "name": "User",
+        "objects": [
+            {
+                "name": "Post",
+                "roles": [
+                    {
+                        "name": "Writer",
+                        "subroles": [
+                            "Viewer"
+                        ]
+                    },
+                    {
+                        "name": "Viewer"
+                    }
+                ]
+            },
+            {
+                "name": "Group",
+                "roles": [
+                    {
+                        "name": "Admin",
+                        "subroles": [
+                            "Member"
+                        ]
+                    },
+                    {
+                        "name": "Member"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "Post"
+    },
+    {
+        "name": "Group",
+        "objects": [
+            {
+                "name": "Post",
+                "roles": [
+                    {
+                        "name": "Writer",
+                        "subroles": [
+                            "Viewer"
+                        ]
+                    },
+                    {
+                        "name": "Viewer"
+                    }
+                ]
+            }
+        ]
+    }
+]

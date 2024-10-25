@@ -720,6 +720,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "codegen"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff61280aed771c3070e7dcc9e050c66f1eb1e3b96431ba66f9f74641d02fc41d"
+dependencies = [
+ "indexmap 1.9.3",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1580,6 +1589,12 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
+
+[[package]]
+name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
@@ -1671,6 +1686,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4419f022e55cc63d5bbd6b44b71e1d226b9c9480a47824c706e9d54e5c40c5eb"
 dependencies = [
  "arrayvec",
+]
+
+[[package]]
+name = "indexmap"
+version = "1.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
+dependencies = [
+ "autocfg",
+ "hashbrown 0.12.3",
 ]
 
 [[package]]
@@ -1978,7 +2003,7 @@ dependencies = [
  "cfg_aliases 0.1.1",
  "codespan-reporting",
  "hexf-parse",
- "indexmap",
+ "indexmap 2.6.0",
  "log",
  "rustc-hash",
  "spirv",
@@ -2387,7 +2412,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
  "fixedbitset",
- "indexmap",
+ "indexmap 2.6.0",
 ]
 
 [[package]]
@@ -2601,10 +2626,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "rbac"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a992609f94775d450f387ff56638cbaa61c57b284ab5c69e9924bc808e29b0ca"
+dependencies = [
+ "indradb-lib",
+ "serde_json",
+]
+
+[[package]]
 name = "rbac-example"
 version = "0.1.0"
 dependencies = [
- "rbac",
+ "rbac 0.1.0",
  "rbac-macro",
 ]
 
@@ -2613,8 +2648,16 @@ name = "rbac-macro"
 version = "0.1.0"
 dependencies = [
  "quote",
- "rbac",
+ "rbac 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 2.0.79",
+]
+
+[[package]]
+name = "rbac-parser"
+version = "0.1.0"
+dependencies = [
+ "codegen",
+ "serde_json",
 ]
 
 [[package]]
@@ -2625,7 +2668,7 @@ dependencies = [
  "egui",
  "egui_graphs",
  "petgraph",
- "rbac",
+ "rbac 0.1.0",
  "rbac-macro",
 ]
 
@@ -3090,7 +3133,7 @@ version = "0.19.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
 dependencies = [
- "indexmap",
+ "indexmap 2.6.0",
  "toml_datetime",
  "winnow 0.5.40",
 ]
@@ -3101,7 +3144,7 @@ version = "0.22.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ae48d6208a266e853d946088ed816055e556cc6028c5e8e2b84d9fa5dd7c7f5"
 dependencies = [
- "indexmap",
+ "indexmap 2.6.0",
  "toml_datetime",
  "winnow 0.6.20",
 ]
@@ -3512,7 +3555,7 @@ dependencies = [
  "bitflags 2.6.0",
  "cfg_aliases 0.1.1",
  "document-features",
- "indexmap",
+ "indexmap 2.6.0",
  "log",
  "naga",
  "once_cell",
